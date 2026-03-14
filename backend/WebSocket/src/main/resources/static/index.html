@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spring Boot WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<div>
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+</div>
+<div id="chat-section" style="margin-top: 20px;">
+    <input type="text" id="message" placeholder="Type a message..."/>
+    <button id="send">Send to Server</button>
+</div>
+<ul id="responses" style="margin-top: 20px; border: 1px solid #ccc; height: 200px; overflow-y: scroll;">
+</ul>
+
+<script>
+    var stompClient = null;
+
+    function setConnected(connected) {
+        document.getElementById('connect').disabled = connected;
+        document.getElementById('disconnect').disabled = !connected;
+        if (connected) {
+            appendMessage("System: Connected to WebSocket.");
+        } else {
+            appendMessage("System: Disconnected.");
+        }
+    }
+
+    function connect() {
+        // Must match the endpoint in WebSocketConfig: registry.addEndpoint("/connect/message")
+        var socket = new SockJS('http://localhost:8080/connect/message');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            setConnected(true);
+            // Subscribe to the broadcast topic
+            stompClient.subscribe('/topic/messages', function (greeting) {
+                appendMessage("Broadcast: " + greeting.body);
+            });
+        }, function(error) {
+            appendMessage("Error: " + error);
+        });
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+        }
+        setConnected(false);
+    }
+
+    function sendMessage() {
+        var message = document.getElementById('message').value;
+        // Send to the destination handled by @MessageMapping("/chat")
+        stompClient.send("/app/chat", {}, message);
+        document.getElementById('message').value = '';
+    }
+
+    function appendMessage(text) {
+        var li = document.createElement("li");
+        li.appendChild(document.createTextNode(text));
+        document.getElementById('responses').appendChild(li);
+    }
+
+    document.getElementById('connect').onclick = connect;
+    document.getElementById('disconnect').onclick = disconnect;
+    document.getElementById('send').onclick = sendMessage;
+</script>
+</body>
+</html>

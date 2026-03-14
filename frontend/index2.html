@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spring Boot WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+<div>
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+</div>
+<div id="chat-section" style="margin-top: 20px;">
+    <input type="text" id="message" placeholder="Type a message..."/>
+    <button id="send">Send to Server</button>
+</div>
+<ul id="responses" style="margin-top: 20px; border: 1px solid #ccc; height: 200px; overflow-y: scroll;">
+</ul>
+
+<script>
+    var stompClient = null;
+    
+    //encrytpt the message before sending to server
+    const secretKey = "mySuperSecretKey123!"; // Must be shared securely between clients
+
+    function encryptMessage(plainText) {
+        return CryptoJS.AES.encrypt(plainText, secretKey).toString();
+    }
+
+function decryptMessage(cipherText) {
+    try {
+        console.log("Cipher text received for decryption:", cipherText);
+
+        const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
+        const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decrypted) throw new Error("Decryption failed or returned empty string");
+        console.log("Decrypted message:", decrypted);
+        return decrypted;
+    } catch (error) {
+        console.error("Decryption error:", error);
+        return "Error decrypting message"; // Return a fallback message
+    }
+}
+
+    function setConnected(connected) {
+        document.getElementById('connect').disabled = connected;
+        document.getElementById('disconnect').disabled = !connected;
+        if (connected) {
+            appendConnectionMessage("System: Connected to WebSocket.");
+        } else {
+            appendConnectionMessage("System: Disconnected.");
+        }
+    }
+
+    function connect() {
+        // Must match the endpoint in WebSocketConfig: registry.addEndpoint("/connect/message")
+        var socket = new SockJS('http://localhost:8080/connect/message');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({ Authorization: "Bearer your-token-here" }, function (frame) {
+            setConnected(true);
+            // Subscribe to the broadcast topic
+            stompClient.subscribe('/topic/messages', function (greeting) {
+                console.log("Received message:", greeting.body);
+                appendMessage(greeting.body);
+            });
+        }, function(error) {
+            appendMessage("Error: " + error);
+        });
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+        }
+        setConnected(false);
+    }
+
+    // Usage in sendMessage:
+    function sendMessage() {
+        var message = document.getElementById('message').value;
+        var encrypted = encryptMessage(message);
+        stompClient.send("/app/chat", {}, encrypted);
+        document.getElementById('message').value = '';
+    }
+
+    // Usage in appendMessage (after receiving):
+    function appendMessage(text) {
+        var decrypted = decryptMessage(text);
+        var li = document.createElement("li");
+        li.appendChild(document.createTextNode(decrypted));
+        document.getElementById('responses').appendChild(li);
+    }
+
+    function appendConnectionMessage(text) {
+        let messageToDisplay = text;
+        var li = document.createElement("li");
+        li.appendChild(document.createTextNode(messageToDisplay));
+        document.getElementById('responses').appendChild(li);
+    }
+
+    document.getElementById('connect').onclick = connect;
+    document.getElementById('disconnect').onclick = disconnect;
+    document.getElementById('send').onclick = sendMessage;
+</script>
+</body>
+</html>
