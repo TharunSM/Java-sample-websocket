@@ -59,7 +59,7 @@ function decryptMessage(cipherText) {
         var socket = new SockJS('http://localhost:8080/connect/message');
         stompClient = Stomp.over(socket);
 
-        stompClient.connect({ Authorization: "Bearer your-token-here" }, function (frame) {
+        stompClient.connect({ "Authorization": "ThisIsASampleSocketProgram!" }, function (frame) {
             setConnected(true);
             // Subscribe to the broadcast topic
             stompClient.subscribe('/topic/messages', function (greeting) {

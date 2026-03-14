@@ -22,6 +22,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // The endpoint where clients connect to the WebSocket server
-        registry.addEndpoint("/connect/message").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/connect/message")
+//                .addInterceptors(new AuthHandshakeInterceptor()) //interceptor is not able to find the header
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }
